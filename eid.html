@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>عيد مبارك عزوزي</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Cairo', sans-serif !important;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: black;
+        }
+
+        /* شاشة مقدمة حركة الهاتف الوردي */
+        #orientation-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000000; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .camera-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px; 
+        }
+
+        .screen-phone {
+            width: 140px;   
+            height: 240px;  
+            border: 6px solid #ff69b4; 
+            border-radius: 20px;
+            position: relative;
+            background: rgba(255, 105, 180, 0.05);
+            box-shadow: 0 0 45px rgba(255, 105, 180, 0.6);
+            animation: rotateFullDeviceOnce 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .screen-phone.zoom-enter {
+            animation: phoneZoomIn 1.2s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+        }
+
+        .screen-phone::after {
+            content: '';
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 16px;
+            height: 16px;
+            background-color: #ff69b4;
+            border-radius: 50%;
+        }
+        
+        .screen-phone::before {
+            content: '';
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 5px;
+            background-color: #ff69b4;
+            border-radius: 3px;
+        }
+
+        @keyframes rotateFullDeviceOnce {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(0deg); }
+            100% { transform: rotate(-90deg); }
+        }
+
+        @keyframes phoneZoomIn {
+            0% { transform: rotate(-90deg) scale(1); opacity: 1; }
+            100% { transform: rotate(-90deg) scale(35); opacity: 0; }
+        }
+
+        /* لوحة الأنميشن للقلوب والمطر */
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .content-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            pointer-events: none;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .text-display {
+            display: none; 
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+        }
+
+        .text-display.active {
+            display: block;
+            animation: fadeInNormal 0.2s forwards;
+        }
+
+        /* العداد التنازلي الوردي */
+        #countdown {
+            font-size: 16vw;
+            color: #ff69b4;
+            text-shadow: 0 0 35px rgba(255, 105, 180, 0.9);
+            font-weight: 900;
+        }
+
+        /* ستايل الكلمات المتتابعة السريعة */
+        .word-font {
+            font-size: 15vw; 
+            font-weight: 900;
+            color: #ff69b4;
+            text-shadow: 0 0 30px rgba(255, 105, 180, 0.9), 0 0 60px rgba(255, 105, 180, 0.4);
+        }
+
+        /* العبارة الأخيرة تظهر بشكل طبيعي وفخم */
+        #love-text {
+            font-size: 6vw;
+            font-weight: 900;
+            color: #ff69b4;
+            text-shadow: 0 0 25px rgba(255, 105, 180, 0.9);
+            max-width: 85%;
+            line-height: 1.7;
+            z-index: 20;
+        }
+
+        @keyframes fadeInNormal {
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="orientation-overlay">
+        <div class="camera-container">
+            <div class="screen-phone" id="phoneBody"></div>
+        </div>
+    </div>
+
+    <canvas id="mainCanvas"></canvas>
+
+    <div class="content-container">
+        <div id="countdown" class="text-display">3</div>
+        
+        <div id="word1" class="text-display word-font">عيد</div>
+        <div id="word2" class="text-display word-font">اضحى</div>
+        <div id="word3" class="text-display word-font">مبارك</div>
+        <div id="word4" class="text-display word-font">عزوزي</div>
+        
+        <div id="love-text" class="text-display">كل عام وانت حبيبي ولا يحرمني منك</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        let mode = 'idle'; 
+        
+        // تأثير المطر الحرفي الوردي الخفيف في الخلفية
+        let fallingLetters = [];
+        const lettersPool = "عيداضحىمباركعزوزي".split("");
+
+        let pinkHeartParticles = [];
+        let whiteHeartParticles = [];
+        let pulseScale = 1;
+        let pulseDirection = 1;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        class FallingLetter {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * -canvas.height;
+                this.speed = 2 + Math.random() * 3;
+                this.fontSize = 12 + Math.random() * 14;
+                this.char = lettersPool[Math.floor(Math.random() * lettersPool.length)];
+                this.opacity = 0.2 + Math.random() * 0.5;
+            }
+            update() {
+                this.y += this.speed;
+                if (this.y > canvas.height) {
+                    this.y = -20;
+                    this.x = Math.random() * canvas.width;
+                }
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+                ctx.font = `bold ${this.fontSize}px 'Cairo', sans-serif`;
+                ctx.fillStyle = '#ff69b4';
+                ctx.fillText(this.char, this.x, this.y);
+                ctx.restore();
+            }
+        }
+
+        function initLetters() {
+            fallingLetters = [];
+            for (let i = 0; i < 50; i++) {
+                fallingLetters.push(new FallingLetter());
+            }
+        }
+
+        // --- محرك جسيمات القلوب المزدوجة النابضة ---
+        class Particle {
+            constructor(targetX, targetY, color, size, isWhite = false) {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.baseX = targetX;
+                this.baseY = targetY;
+                this.targetX = targetX;
+                this.targetY = targetY;
+                this.color = color;
+                this.size = size;
+                this.speed = 0.06;
+                this.alpha = 0.4 + Math.random() * 0.6;
+                this.isWhite = isWhite;
+            }
+            update() {
+                let scaleToUse = pulseScale;
+                if (!this.isWhite) {
+                    scaleToUse = 1 + (pulseScale - 1) * 0.5; 
+                }
+                let sX = this.baseX - (canvas.width / 2);
+                let sY = this.baseY - (canvas.height / 2);
+                this.targetX = (canvas.width / 2) + sX * scaleToUse;
+                this.targetY = (canvas.height / 2) + sY * scaleToUse;
+
+                this.x += (this.targetX - this.x) * this.speed;
+                this.y += (this.targetY - this.y) * this.speed;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function generateHeartPath(count, sizeScale, centerX, centerY) {
+            let points = [];
+            for (let i = 0; i < count; i++) {
+                let t = (i / count) * Math.PI * 2;
+                let x = 16 * Math.pow(Math.sin(t), 3);
+                let y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+                points.push({ x: centerX + x * sizeScale, y: centerY + y * sizeScale });
+            }
+            return points;
+        }
+
+        function initHearts() {
+            pinkHeartParticles = [];
+            whiteHeartParticles = [];
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            const pinkScale = Math.min(canvas.width, canvas.height) * 0.035; 
+            let pinkPoints = generateHeartPath(380, pinkScale, centerX, centerY);
+            pinkPoints.forEach(p => {
+                pinkHeartParticles.push(new Particle(p.x, p.y, '#ff69b4', 2 + Math.random()*2, false));
+            });
+
+            const whiteScale = Math.min(canvas.width, canvas.height) * 0.018;
+            let whitePoints = generateHeartPath(220, whiteScale, centerX, centerY);
+            whitePoints.forEach(p => {
+                whiteHeartParticles.push(new Particle(p.x, p.y, '#ffffff', 1.5 + Math.random()*1.5, true));
+            });
+        }
+
+        function mainLoop() {
+            requestAnimationFrame(mainLoop);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (mode === 'letters') {
+                fallingLetters.forEach(l => { l.update(); l.draw(); });
+            } 
+            else if (mode === 'hearts') {
+                pulseScale += 0.018 * pulseDirection; // نبض أسرع وحيوي
+                if (pulseScale > 1.15 || pulseScale < 0.88) {
+                    pulseDirection *= -1; 
+                }
+                pinkHeartParticles.forEach(p => { p.update(); p.draw(); });
+                whiteHeartParticles.forEach(p => { p.update(); p.draw(); });
+            }
+        }
+        mainLoop();
+
+        // --- التحكم بالتتابع الزمني السريع جداً ⏱️ ---
+        const overlay = document.getElementById('orientation-overlay');
+        const phone = document.getElementById('phoneBody');
+        const countdown = document.getElementById('countdown');
+        
+        const w1 = document.getElementById('word1');
+        const w2 = document.getElementById('word2');
+        const w3 = document.getElementById('word3');
+        const w4 = document.getElementById('word4');
+        const loveText = document.getElementById('love-text');
+
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                phone.classList.add('zoom-enter');
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    startCountdown();
+                }, 1200);
+            }, 2500);
+        });
+
+        function startCountdown() {
+            countdown.classList.add('active');
+            setTimeout(() => { countdown.innerText = "2"; }, 1000);
+            setTimeout(() => { countdown.innerText = "1"; }, 2000);
+            setTimeout(() => {
+                countdown.classList.remove('active');
+                startWordsSequence(); 
+            }, 3000);
+        }
+
+        function startWordsSequence() {
+            initLetters();
+            mode = 'letters'; 
+
+            // 1. كلمة (عيد) - ثانية واحدة
+            w1.classList.add('active');
+
+            // 2. كلمة (اضحى) - ثانية واحدة
+            setTimeout(() => {
+                w1.classList.remove('active');
+                w2.classList.add('active');
+            }, 1000);
+
+            // 3. كلمة (مبارك) - ثانية واحدة
+            setTimeout(() => {
+                w2.classList.remove('active');
+                w3.classList.add('active');
+            }, 2000);
+
+            // 4. كلمة (عزوزي) - ثانية واحدة
+            setTimeout(() => {
+                w3.classList.remove('active');
+                w4.classList.add('active');
+            }, 3000);
+
+            // 5. اختفاء كلمة عزوزي وبدء ظهور القلوب لوحدها أولاً لثانية ونصف! 💖🤍
+            setTimeout(() => {
+                w4.classList.remove('active');
+                mode = 'idle'; 
+                
+                setTimeout(() => {
+                    initHearts(); 
+                    mode = 'hearts'; // يظهر القلب الوردي والأبيض ينبضان لوحدهما فوراً!
+                    
+                    // 6. ظهور العبارة الأخيرة بشكل طبيعي وتلقائي بعد ثانية ونصف من نبض القلوب
+                    setTimeout(() => {
+                        loveText.classList.add('active'); 
+                    }, 1500);
+
+                }, 400);
+
+            }, 4000); // إجمالي تتابع الكلمات (4 ثوانٍ فقط)
+        }
+    </script>
+</body>
+</html>
